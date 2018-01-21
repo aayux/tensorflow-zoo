@@ -1,9 +1,9 @@
 # Deep Learning Models written in Tensorflow
 
 ### Currently Available
-Model | Dataset
---- | ---
-ResNext-29 <sup>[1]</sup> | [CIFAR10](http://www.cs.toronto.edu/~kriz/cifar.html) <sup>[2]</sup>
+Model | Dataset | Download Link
+--- | --- | ---
+ResNext-29 <sup>[1]</sup> | CIFAR10<sup>[2]</sup> | [Download](http://www.cs.toronto.edu/~kriz/cifar.html)
 
 ### References
 [1]  [Aggregated Residual Transformations for Deep Neural Networks](https://arxiv.org/abs/1611.05431), Xie et al. Apr 2017.

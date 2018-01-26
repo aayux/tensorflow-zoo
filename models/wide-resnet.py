@@ -1,15 +1,3 @@
-# -*- coding: utf-8 -*-
-
-""" 
-Creates a Wide ResNet Model as defined in:
-Wide Residual Networks
-Sergey Zagoruyko and Nikos Komodakis (2016). 
-arXiv:1605.07146.
-"""
-
-__author__ = "Aayush Yadav"
-__email__ = "aayushyadav96@gmail.com"
-
 class WideRes22(object):
     def __init__(self, img_dim, n_classes, 
                  in_channels, out_channels, 
@@ -33,9 +21,7 @@ class WideRes22(object):
         self.input_x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, in_channels], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, n_classes], name="input_y")
         self.train_flag = tf.placeholder(tf.bool, name="train_flag")
-        
-        self.layer_outputs = []
-
+   
         # First "plain" convolution layer
         with tf.name_scope("conv_0"):
             kernel_shape=[3, 3, in_channels, out_channels[0]]
@@ -44,7 +30,7 @@ class WideRes22(object):
                                     initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
             conv = tf.nn.conv2d(self.input_x, W, strides=[1, 1, 1, 1], padding="SAME", name="conv")
             self.out = tf.nn.relu(tf.contrib.layers.batch_norm(conv, decay=0.9, center=True, scale=True, 
-                                          is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")     
+                                          is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
         
         print ("Computing Residual Group 1 ...")
         # Residual Groups       
@@ -84,7 +70,7 @@ class WideRes22(object):
         Args:
             
             input_x: layer input
-            stride: ...
+            stride: kernel stride convolution
             out_channels: output channel dimensionality of the model (shared)
             n_blocks: Stack n_blocks bottleneck blocks/modules
             group_id: ResNet layer identifier
@@ -94,7 +80,7 @@ class WideRes22(object):
 
         for block_num in range(n_blocks):
             in_dim = int(np.shape(input_x)[-1])
-            
+                
             with tf.name_scope("%s-%s_conv_1" % (group_id, block_num + 1)):
                 kernel_shape=[3, 3, in_dim, out_channels]
                 with tf.variable_scope(("%s-%s_conv_1" % (group_id, block_num + 1)), reuse=None):
@@ -103,14 +89,14 @@ class WideRes22(object):
                 conv = tf.nn.conv2d(input_x, W, strides=[1, stride, stride, 1], padding="SAME", name="conv")
                 out_1 = tf.nn.relu(tf.contrib.layers.batch_norm(conv, decay=0.9, center=True, scale=True, 
                                           is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
-                                          
+            
             with tf.name_scope("%s-%s_conv_2" % (group_id, block_num + 1)):                
                 kernel_shape=[3, 3, out_channels, out_channels]
                 with tf.variable_scope(("%s-%s_conv_2" % (group_id, block_num + 1)), reuse=None):
                     W = tf.get_variable(shape=kernel_shape,
                                         initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
                 out_2 = tf.nn.conv2d(out_1, W, strides=[1, 1, 1, 1], padding="SAME", name="conv")
-                
+                            
             if block_num is 0:
                 with tf.name_scope("%s-%s_conv_3" % (group_id, block_num + 1)):
                     kernel_shape=[1, 1, in_dim, out_channels]
@@ -119,6 +105,7 @@ class WideRes22(object):
                                             initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
                     conv = tf.nn.conv2d(input_x, W, strides=[1, stride, stride, 1], padding="VALID", name="conv")
                     shortcut = tf.add(out_2, conv)
+                stride = 1
             else:
                 shortcut = tf.add(out_2, input_x)
                 

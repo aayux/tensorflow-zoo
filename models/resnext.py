@@ -18,7 +18,7 @@ import tensorflow as tf
 class ResNeXt29(object):
     def __init__(self, img_dim, n_classes, in_channels, out_channels ,cardinality, n_blocks, l2_reg_lambda):
         """
-        Constructor, RexNeXt29 Model
+        Constructor, ResNeXt-29 Model
         
         Args:
             

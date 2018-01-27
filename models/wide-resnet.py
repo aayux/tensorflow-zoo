@@ -1,3 +1,20 @@
+# -*- coding: utf-8 -*-
+
+""" 
+Creates a Wide-Reset Model as defined in:
+Wide Residual Networks (2017).
+Zagoruyko S. and Komodakis N.
+arXiv preprint arXiv:1605.07146.
+"""
+
+__author__ = "Aayush Yadav"
+__email__ = "aayushyadav96@gmail.com"
+
+import tflearn
+
+import numpy as np
+import tensorflow as tf
+
 class WideRes22(object):
     def __init__(self, img_dim, n_classes, 
                  in_channels, out_channels, 

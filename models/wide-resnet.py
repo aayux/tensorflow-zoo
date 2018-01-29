@@ -21,7 +21,7 @@ class WideRes22(object):
                  width_mult, n_blocks, 
                  learning_rate, l2_reg_lambda=0.):
         """
-        Constructor, Wide-ResNet-22 Model
+        Constructor, Wide-ResNet22 Model
         
         Args:
             
@@ -38,17 +38,14 @@ class WideRes22(object):
         self.input_x = tf.placeholder(tf.float32, shape=[None, img_dim, img_dim, in_channels], name="input_x")
         self.input_y = tf.placeholder(tf.float32, [None, n_classes], name="input_y")
         self.train_flag = tf.placeholder(tf.bool, name="train_flag")
-   
+        
         # First "plain" convolution layer
         with tf.name_scope("conv_0"):
             kernel_shape=[3, 3, in_channels, out_channels[0]]
-            with tf.variable_scope("conv_0", reuse=None):
-                W = tf.get_variable(shape=kernel_shape,
-                                    initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
-            conv = tf.nn.conv2d(self.input_x, W, strides=[1, 1, 1, 1], padding="SAME", name="conv")
-            self.out = tf.nn.relu(tf.contrib.layers.batch_norm(conv, decay=0.9, center=True, scale=True, 
-                                          is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
-        
+            W = tf.get_variable(shape=kernel_shape,
+                                initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
+            self.out = tf.nn.conv2d(self.input_x, W, strides=[1, 1, 1, 1], padding="SAME", name="conv")
+            
         print ("Computing Residual Group 1 ...")
         # Residual Groups       
         self.out = self.res_group(self.out, stride=1, out_channels=out_channels[0] * width_mult, 
@@ -62,18 +59,18 @@ class WideRes22(object):
         
         print ("Pooling outputs and calculating scores ...")
         # Pooling layer
-        self.out = tflearn.layers.conv.global_avg_pool(self.out, name="global-avg-pooling")
+        self.out = tflearn.layers.conv.avg_pool_2d(self.out, kernel_size=8, strides=[1, 1, 1, 1], padding="valid", name="avg-pool-2d")
         self.out = tf.contrib.layers.flatten(self.out)
         
         # Final (unnormalized) scores and predictions
-        self.scores = tf.layers.dense(self.out, use_bias=False, units=n_classes, name="scores")
+        self.scores = tf.layers.dense(self.out, use_bias=True, units=n_classes, name="scores")
         self.predictions = tf.argmax(self.scores, axis=1, name="predictions")
-
+        
         # Calculate mean cross-entropy loss
-        l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in tf.trainable_variables()])
         with tf.name_scope("loss"):
+            l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in tf.trainable_variables()])
             losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y)
-            self.loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
+            self.loss = tf.reduce_mean(losses) + (l2_reg_lambda * l2_loss) + (darc_reg_lambda * darc_reg)
 
         # Accuracy
         with tf.name_scope("accuracy"):
@@ -95,38 +92,36 @@ class WideRes22(object):
         Returns: A group of n_blocks, k-wide residual blocks
         """
 
+        shortcut = input_x
+
         for block_num in range(n_blocks):
-            in_dim = int(np.shape(input_x)[-1])
-                
+            in_dim = int(np.shape(shortcut)[-1])
+            
             with tf.name_scope("%s-%s_conv_1" % (group_id, block_num + 1)):
-                kernel_shape=[3, 3, in_dim, out_channels]
-                with tf.variable_scope(("%s-%s_conv_1" % (group_id, block_num + 1)), reuse=None):
-                    W = tf.get_variable(shape=kernel_shape,
-                                        initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
-                conv = tf.nn.conv2d(input_x, W, strides=[1, stride, stride, 1], padding="SAME", name="conv")
-                out_1 = tf.nn.relu(tf.contrib.layers.batch_norm(conv, decay=0.9, center=True, scale=True, 
+                out_1 = tf.nn.relu(tf.contrib.layers.batch_norm(shortcut, decay=0.9, center=True, scale=True, 
                                           is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
+                kernel_shape=[3, 3, in_dim, out_channels]
+                W = tf.get_variable(shape=kernel_shape,
+                                    initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
+                conv_1 = tf.nn.conv2d(out_1, W, strides=[1, stride, stride, 1], padding="SAME", name="conv")
             
             with tf.name_scope("%s-%s_conv_2" % (group_id, block_num + 1)):                
+                out_2 = tf.nn.relu(tf.contrib.layers.batch_norm(conv_1, decay=0.9, center=True, scale=True, 
+                                          is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
                 kernel_shape=[3, 3, out_channels, out_channels]
-                with tf.variable_scope(("%s-%s_conv_2" % (group_id, block_num + 1)), reuse=None):
-                    W = tf.get_variable(shape=kernel_shape,
-                                        initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
-                out_2 = tf.nn.conv2d(out_1, W, strides=[1, 1, 1, 1], padding="SAME", name="conv")
+                W = tf.get_variable(shape=kernel_shape,
+                                    initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
+                conv_2 = tf.nn.conv2d(out_2, W, strides=[1, 1, 1, 1], padding="SAME", name="conv")
                             
             if block_num is 0:
                 with tf.name_scope("%s-%s_conv_3" % (group_id, block_num + 1)):
                     kernel_shape=[1, 1, in_dim, out_channels]
-                    with tf.variable_scope(("%s-%s_conv_3" % (group_id, block_num + 1)), reuse=None):
-                        W = tf.get_variable(shape=kernel_shape,
-                                            initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
-                    conv = tf.nn.conv2d(input_x, W, strides=[1, stride, stride, 1], padding="VALID", name="conv")
-                    shortcut = tf.add(out_2, conv)
+                    W = tf.get_variable(shape=kernel_shape,
+                                        initializer=tf.truncated_normal_initializer(stddev=0.1), name="weight")
+                    conv_3 = tf.nn.conv2d(out_1, W, strides=[1, stride, stride, 1], padding="VALID", name="conv")
+                    shortcut = tf.add(conv_2, conv_3)
                 stride = 1
             else:
-                shortcut = tf.add(out_2, input_x)
+                shortcut = tf.add(conv_2, shortcut)
                 
-            input_x = tf.nn.relu(tf.contrib.layers.batch_norm(conv, decay=0.9, center=True, scale=True, 
-                                          is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
-                
-        return input_x
+        return shortcut

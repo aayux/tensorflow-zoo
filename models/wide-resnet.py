@@ -57,8 +57,11 @@ class WideRes22(object):
         self.out = self.res_group(self.out, stride=2, out_channels=out_channels[2] * width_mult, 
                                   n_blocks=n_blocks, group_id=3)
         
-        print ("Pooling outputs and calculating scores ...")
+        self.out = tf.nn.relu(tf.contrib.layers.batch_norm(self.out, decay=0.9, center=True, scale=True, 
+                                          is_training=self.train_flag, zero_debias_moving_mean=True), name="relu")
+
         # Pooling layer
+        print ("Pooling outputs and calculating scores ...")
         self.out = tflearn.layers.conv.avg_pool_2d(self.out, kernel_size=8, strides=[1, 1, 1, 1], padding="valid", name="avg-pool-2d")
         self.out = tf.contrib.layers.flatten(self.out)
         

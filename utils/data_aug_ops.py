@@ -5,21 +5,35 @@ __email__ = "aayushyadav96@gmail.com"
 
 import tensorflow as tf
 
+import numpy as np
+import tensorflow as tf
+
 class DataAugmentation(object):
     """
-    Standard and custom data augmentation procedures
-    for the CIFAR10 dataset. Can be used as an extension
-    for data_utils.
+    Class containing CIFAR10 data augmentation operations
     """
+    
     def __init__(self, features, labels):
         self.features = features
         self.labels = labels
     
+    def standardise(self, features):
+        features = []
+        
+        tf.reset_default_graph()
+		input_x = tf.placeholder(tf.float32, shape=[32, 32, 3])
+        std = tf.image.per_image_standardization(input_x)
+        
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            for img in self.features:
+                std_img = sess.run([std], feed_dict={input_x: img})
+                features.extend(std_img)
+            features = np.array(features, dtype=np.float32)
+        self.features = features
+        return self.features
+    
     def flip_and_crop(self):
-        """
-        Randomly flip images with a probability 0.5
-        then, random crop and pad with reflection.
-        """
         features = []
             
         tf.reset_default_graph()
@@ -35,18 +49,15 @@ class DataAugmentation(object):
             sess.run(tf.global_variables_initializer())
             for img in self.features:
                 if np.random.rand() < 0.5:
-                    aug_img = sess.run([flip_lr], feed_dict={input_x: img})
+                    aug_img = sess.run([flip_lr], feed_dict = {input_x: img})
                 else:
-                    aug_img = sess.run([padded], feed_dict={input_x: img})
+                    aug_img = sess.run([padded], feed_dict = {input_x: img})
                 features.extend(aug_img)
             features = np.array(features, dtype=np.float32)
         
         return features, self.labels
     
     def label_switch(self):
-        """
-        Randomly switch labels with a probability 0.5
-        """
         labels = []
 
         for label in self.labels:
@@ -58,9 +69,6 @@ class DataAugmentation(object):
         return self.features, labels
     
     def add_gauss_noise(self, noise_factor=0.5):
-		"""
-        Add Gaussian random noise to image.
-        """
         features = []
         noise = []
         
@@ -77,18 +85,13 @@ class DataAugmentation(object):
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for img in self.features:
-                aug_img = sess.run(add_gauss, feed_dict={input_x: img})
+                aug_img = sess.run(add_gauss, feed_dict = {input_x: img})
                 features.append(aug_img)
             features = np.array(features, dtype=np.float32)
             
         return features, self.labels
     
     def random_gaussian(self):
-		"""
-		Draw random pixels from a Gaussian distribution
-		with the same mean and stddev as of the original
-		image.
-		"""
         features = []
         noise = []
         
@@ -104,7 +107,7 @@ class DataAugmentation(object):
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
             for img in self.features:
-                gauss_img = sess.run(gauss_out, feed_dict={input_x: img})
+                gauss_img = sess.run(gauss_out, feed_dict = {input_x: img})
                 features.extend(gauss_img)
             features = np.array(features, dtype=np.float32)
             

@@ -73,7 +73,7 @@ class WideRes22(object):
         with tf.name_scope("loss"):
             l2_loss = tf.add_n([tf.nn.l2_loss(var) for var in tf.trainable_variables()])
             losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y)
-            self.loss = tf.reduce_mean(losses) + (l2_reg_lambda * l2_loss) + (darc_reg_lambda * darc_reg)
+            self.loss = tf.reduce_mean(losses) + (l2_reg_lambda * l2_loss)
 
         # Accuracy
         with tf.name_scope("accuracy"):

@@ -39,7 +39,7 @@ class DataAugmentation(object):
         tf.reset_default_graph()
         input_x = tf.placeholder(tf.float32, shape=[None, 32, 32, 3])
         input_x = tf.reshape(input_x, shape=[32, 32, 3])
-        paddings = tf.constant([[4, 4], [4, 4], [0, 0]])
+        paddings = tf.constant([[2, 2], [2, 2], [0, 0]])
 
         rand_crop = tf.random_crop(input_x, size=[28, 28, 3])
         padded = tf.pad(rand_crop, paddings, "REFLECT")
